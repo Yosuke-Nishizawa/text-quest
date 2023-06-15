@@ -11,3 +11,4 @@ artifacts
 
 .vscode
 contracts/.deps
+contracts/abi
