@@ -20,20 +20,26 @@ contract TextQuestCharacter is
 {
     using Counters for Counters.Counter;
 
-    address public constant REGISTRY =
-        address(0xd9145CCE52D386f254917e481eB44e9943F39138);
-    address public constant INVENTORY_IMPLEMENTATION =
-        address(0xd8b934580fcE35a11B58C6D73aDeE468a2833fa8);
-    address public constant GOLD =
-        address(0xf8e81D47203A594245E36C48e151709F0C19fBe8);
-    address public constant ITEM =
-        address(0xD7ACd2a9FD159E69Bb102A1ca21C9a3e3A5F771B);
+    address public registryAddress;
+    address public inventoryImplementationAddress;
+    address public goldAddress;
+    address public itemAddress;
 
     Counters.Counter private _tokenIdCounter;
     mapping(uint256 => string) private _characterNames;
     mapping(uint256 => address) private _characterInventories;
 
-    constructor() ERC721("Text Quest Character", "TQC") {}
+    constructor(
+        address _registryAddress,
+        address _inventoryImplementationAddress,
+        address _goldAddress,
+        address _itemAddress
+    ) ERC721("Text Quest Character", "TQC") {
+        registryAddress = _registryAddress;
+        inventoryImplementationAddress = _inventoryImplementationAddress;
+        goldAddress = _goldAddress;
+        itemAddress = _itemAddress;
+    }
 
     function safeMint(address to, string memory characterName) public {
         require(bytes(characterName).length > 0, "Name cannot be empty");
@@ -44,7 +50,7 @@ contract TextQuestCharacter is
 
         address inventoryAddress = createAccount(tokenId);
         _characterInventories[tokenId] = inventoryAddress;
-        TextQuestGold(GOLD).mint(inventoryAddress, 100);
+        TextQuestGold(goldAddress).mint(inventoryAddress, 100);
     }
 
     // The following functions are overrides required by Solidity.
@@ -121,7 +127,7 @@ contract TextQuestCharacter is
             itemsTextContent = string(
                 abi.encodePacked(
                     itemsTextContent,
-                    TextQuestItem(ITEM).itemName(index),
+                    TextQuestItem(itemAddress).itemName(index),
                     index == items.length - 1 ? "" : ", "
                 )
             );
@@ -140,8 +146,8 @@ contract TextQuestCharacter is
 
     function createAccount(uint256 tokenId) private returns (address) {
         return
-            IERC6551Registry(REGISTRY).createAccount(
-                INVENTORY_IMPLEMENTATION,
+            IERC6551Registry(registryAddress).createAccount(
+                inventoryImplementationAddress,
                 block.chainid,
                 address(this),
                 tokenId,
@@ -152,11 +158,11 @@ contract TextQuestCharacter is
 
     function itemsOf(uint256 tokenId) public view returns (uint256[] memory) {
         address inventoryAddress = _characterInventories[tokenId];
-        return TextQuestItem(ITEM).tokensOfOwner(inventoryAddress);
+        return TextQuestItem(itemAddress).tokensOfOwner(inventoryAddress);
     }
 
     function goldBalanceOf(uint256 tokenId) public view returns (uint256) {
         address inventoryAddress = _characterInventories[tokenId];
-        return TextQuestGold(GOLD).balanceOf(inventoryAddress);
+        return TextQuestGold(goldAddress).balanceOf(inventoryAddress);
     }
 }
