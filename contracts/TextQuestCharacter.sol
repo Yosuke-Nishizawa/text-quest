@@ -50,7 +50,7 @@ contract TextQuestCharacter is
 
         address inventoryAddress = createAccount(tokenId);
         _characterInventories[tokenId] = inventoryAddress;
-        TextQuestGold(goldAddress).mint(inventoryAddress, 100);
+        TextQuestGold(goldAddress).mint(inventoryAddress, 100 * 10 ** 18);
     }
 
     // The following functions are overrides required by Solidity.
@@ -74,7 +74,14 @@ contract TextQuestCharacter is
         uint256 tokenId
     ) public view virtual override returns (string memory) {
         string memory name = _characterNames[tokenId];
-        bytes memory image = generateImage(tokenId);
+        uint256 gold = goldBalanceOf(tokenId) / (10 ** 18);
+        uint256[] memory itemIds = itemsOf(tokenId);
+        string[] memory items = new string[](itemIds.length);
+
+        for (uint256 i = 0; i < itemIds.length; i++) {
+            items[i] = TextQuestItem(itemAddress).itemName(itemIds[i]);
+        }
+        bytes memory image = generateImage(name, gold, items);
         return
             string(
                 abi.encodePacked(
@@ -82,7 +89,11 @@ contract TextQuestCharacter is
                     Strings.toString(tokenId),
                     '", "name":"',
                     name,
-                    '", "image": "data:image/svg+xml;base64,',
+                    '", "gold":',
+                    Strings.toString(gold),
+                    ', "items":',
+                    arrayToString(items),
+                    ', "image": "data:image/svg+xml;base64,',
                     Base64.encode(image),
                     '"}'
                 )
@@ -90,11 +101,10 @@ contract TextQuestCharacter is
     }
 
     function generateImage(
-        uint256 tokenId
-    ) internal view returns (bytes memory) {
-        string memory name = _characterNames[tokenId];
-        uint256 gold = goldBalanceOf(tokenId);
-        uint256[] memory items = itemsOf(tokenId);
+        string memory name,
+        uint256 gold,
+        string[] memory items
+    ) internal pure returns (bytes memory) {
         string
             memory svgStart = '<svg xmlns="http://www.w3.org/2000/svg" preserveAspectRatio="xMinYMin meet" viewBox="0 0 300 300"><style>.base { fill: white; font-family: serif; font-size: 14px; }</style><rect width="100%" height="100%" fill="black" />';
         string memory svgEnd = "</svg>";
@@ -127,7 +137,7 @@ contract TextQuestCharacter is
             itemsTextContent = string(
                 abi.encodePacked(
                     itemsTextContent,
-                    TextQuestItem(itemAddress).itemName(index),
+                    items[index],
                     index == items.length - 1 ? "" : ", "
                 )
             );
@@ -164,5 +174,25 @@ contract TextQuestCharacter is
     function goldBalanceOf(uint256 tokenId) public view returns (uint256) {
         address inventoryAddress = _characterInventories[tokenId];
         return TextQuestGold(goldAddress).balanceOf(inventoryAddress);
+    }
+
+    function getCharacterInventory(
+        uint256 tokenId
+    ) public view returns (address) {
+        return _characterInventories[tokenId];
+    }
+
+    function arrayToString(
+        string[] memory array
+    ) internal pure returns (string memory) {
+        string memory result = "[";
+        for (uint i = 0; i < array.length; i++) {
+            result = string(abi.encodePacked(result, '"', array[i], '"'));
+            if (i != array.length - 1) {
+                result = string(abi.encodePacked(result, ","));
+            }
+        }
+        result = string(abi.encodePacked(result, "]"));
+        return result;
     }
 }
